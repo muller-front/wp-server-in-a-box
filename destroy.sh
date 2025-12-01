@@ -24,7 +24,7 @@ if [ "$FULL_CLEANUP" = true ]; then
 fi
 
 echo -e "\n--- Shutting down the WordPress stack ---"
-cd "$SCRIPT_-DIR/wordpress-stack/"
+cd "$SCRIPT_DIR/wordpress-stack/"
 sudo docker compose down $DOWN_FLAGS
 
 echo -e "\n--- Shutting down the Proxy stack ---"
