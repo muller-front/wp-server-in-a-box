@@ -4,7 +4,7 @@ services:
     container_name: wp_db
     restart: unless-stopped
     environment:
-      # Lendo as senhas do arquivo .env
+      # Read passwords from .env file
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
       MYSQL_DATABASE: wordpress
       MYSQL_USER: wordpress

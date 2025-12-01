@@ -1,34 +1,34 @@
 #!/bin/bash
 set -e
 
-echo "--- Iniciando o script de provisionamento/atualização do 'WP-Server-in-a-Box' ---"
+echo "--- Starting the 'WP-Server-in-a-Box' provisioning/update script ---"
 
-# Detecta o diretório onde o script está para portabilidade
+# Detect the script's directory for portability
 SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &> /dev/null && pwd)
-echo "Diretório do projeto detectado: $SCRIPT_DIR"
+echo "Project directory detected: $SCRIPT_DIR"
 
-# Verifica se o arquivo .env existe
+# Check if the .env file exists
 ENV_FILE="$SCRIPT_DIR/.env"
 if [ ! -f "$ENV_FILE" ]; then
-    echo -e "\033[1;31mERRO: Arquivo .env não encontrado!\033[0m"
-    echo "Por favor, copie .env.example para .env e preencha suas senhas."
+    echo -e "\033[1;31mERROR: .env file not found!\033[0m"
+    echo "Please copy .env.example to .env and fill in your passwords."
     exit 1
 fi
 
 # ==================================================================================
-# SEÇÃO DE INSTALAÇÃO DO DOCKER (IDEMPOTENTE)
+# DOCKER INSTALLATION SECTION (IDEMPOTENT)
 # ==================================================================================
 if ! command -v docker &> /dev/null
 then
-    echo "--- Docker não encontrado. Iniciando instalação... ---"
-    echo "--- Passo 1: Removendo versões antigas do Docker (se houver) ---"
+    echo "--- Docker not found. Starting installation... ---"
+    echo "--- Step 1: Removing old Docker versions (if any) ---"
     sudo apt-get remove docker docker-engine docker.io containerd runc -y || true
 
-    echo "--- Passo 2: Atualizando o sistema e instalando dependências ---"
+    echo "--- Step 2: Updating system and installing dependencies ---"
     sudo apt-get update && sudo apt-get upgrade -y
     sudo apt-get install -y ca-certificates curl gnupg unzip
 
-    echo "--- Passo 3: Adicionando o repositório oficial do Docker ---"
+    echo "--- Step 3: Adding Docker's official GPG key and repository ---"
     sudo install -m 0755 -d /etc/apt/keyrings
     curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo tee /etc/apt/keyrings/docker.gpg > /dev/null
     sudo chmod a+r /etc/apt/keyrings/docker.gpg
@@ -38,58 +38,57 @@ then
       sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
     sudo apt-get update
 
-    echo "--- Passo 4: Instalando o Docker Engine e o Compose V2 ---"
+    echo "--- Step 4: Installing Docker Engine and Compose V2 ---"
     sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
 else
-    echo "--- Docker já está instalado. Pulando instalação. ---"
+    echo "--- Docker is already installed. Skipping installation. ---"
 fi
 
-echo "--- Verificando instalações ---"
+echo "--- Verifying installations ---"
 docker --version
 docker compose version
 
 # ==================================================================================
-# SEÇÃO DE ORQUESTRAÇÃO DOS CONTAINERS
+# CONTAINER ORCHESTRATION SECTION
 # ==================================================================================
 
-# Lista das stacks a serem gerenciadas
+# List of stacks to be managed
 STACKS=("proxy" "wordpress-stack")
 
 for stack in "${STACKS[@]}"; do
-    echo -e "\n--- Processando a stack: $stack ---"
+    echo -e "\n--- Processing stack: $stack ---"
     STACK_PATH="$SCRIPT_DIR/$stack"
 
     if [ -d "$STACK_PATH" ]; then
         cd "$STACK_PATH"
 
-        # Lógica de atualização/criação
+        # Update/create logic
         if [ "$stack" == "wordpress-stack" ]; then
-            echo "=> Verificando/Atualizando a stack do WordPress (com build)..."
+            echo "=> Checking/Updating the WordPress stack (with build)..."
             sudo docker compose --env-file "$ENV_FILE" up -d --build
         else
-            echo "=> Verificando/Atualizando a stack do Proxy..."
+            echo "=> Checking/Updating the Proxy stack..."
             sudo docker compose pull
             sudo docker compose up -d
         fi
     else
-        echo "AVISO: Diretório '$STACK_PATH' não encontrado. Pulando."
+        echo "WARNING: Directory '$STACK_PATH' not found. Skipping."
     fi
 done
 
-echo -e "\n--- Limpando imagens antigas do Docker ---"
+echo -e "\n--- Pruning old Docker images ---"
 sudo docker image prune -f
 
 echo ""
-echo "--- ✅ SUCESSO! ---"
-echo "O ambiente do WordPress foi provisionado/atualizado."
-echo "Se esta for a primeira execução, siga os passos manuais abaixo:"
-echo "1. Configure o Nginx Proxy Manager no IP_DA_VM:81"
-echo "   (user: admin@example.com / senha: changeme)"
-echo "2. Crie um registro DNS (ex: seudominio.com) apontando para o IP desta VM."
-echo "3. No NPM, adicione um Proxy Host para 'seudominio.com':"
-echo "   - Na aba 'Details', use 'Forward Hostname / IP' como 'wp_nginx' na porta 80."
-echo "   - Ative também a opção 'Block Common Exploits'."
-echo "   - Na aba 'SSL', solicite um certificado e ative 'Force SSL' e 'HTTP/2 Support'."
-echo "4. Acesse 'https://seudominio.com' e complete a famosa instalação de 5 minutos do WordPress."
-echo "5. (Opcional) Para restaurar um backup, instale seu plugin de migração (como o WPVivid) e siga as instruções dele."
-
+echo "--- ✅ SUCCESS! ---"
+echo "The WordPress environment has been provisioned/updated."
+echo "If this is the first run, follow the manual steps below:"
+echo "1. Set up the Nginx Proxy Manager at YOUR_VM_IP:81"
+echo "   (Default user: admin@example.com / password: changeme)"
+echo "2. Create a DNS A record (e.g., yourdomain.com) pointing to this VM's IP address."
+echo "3. In NPM, add a Proxy Host for 'yourdomain.com':"
+echo "   - On the 'Details' tab, use 'Forward Hostname / IP' as 'wp_nginx' on port 80."
+echo "   - Also, enable the 'Block Common Exploits' option."
+echo "   - On the 'SSL' tab, request a new certificate and enable 'Force SSL' and 'HTTP/2 Support'."
+echo "4. Access 'https://yourdomain.com' and complete the famous 5-minute WordPress installation."
+echo "5. (Optional) To restore a backup, install your migration plugin (like WPVivid) and follow its instructions."
