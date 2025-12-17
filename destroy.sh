@@ -56,6 +56,13 @@ if [ "$FULL_CLEANUP" = true ]; then
     echo "--- Deleting the custom-built Docker image ---"
     # The '|| true' prevents an error if the image doesn't exist
     sudo docker image rm wp-server-custom-image || true
+    
+    echo "--- Deleting base images (optional cleanup) ---"
+    # Try to remove the base images used by the project. 
+    # This might fail if other containers use them, which is fine (hence || true).
+    sudo docker image rm jc21/nginx-proxy-manager:latest || true
+    sudo docker image rm mariadb:10.6 || true
+    sudo docker image rm wordpress:php8.2-fpm || true
 fi
 
 echo -e "\n--- Pruning unused Docker networks ---"

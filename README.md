@@ -1,62 +1,74 @@
-# WP-Server-in-a-Box 🚀 (v1.0)
+# 📦 WP-Server-in-a-Box 🚀
 
-An Infrastructure as Code (IaC) project that provisions a complete, secure, and containerized WordPress server with a single command. Ideal for developers, agencies, or anyone who needs a robust and portable WordPress environment.
+**Your journey to a professional WordPress server starts here!**
 
-## Philosophy
+Welcome to *WP-Server-in-a-Box*, the magic solution that transforms any raw Linux server into a high-performance WordPress fortress with a single command! Ideal for devs, agencies, and digital adventurers.
 
-This project follows the **"Cattle, not Pets"** philosophy. The server is designed to be disposable and 100% reproducible from code. The intelligence is not in the machine itself, but in the version-controlled scripts and configuration files.
+---
 
-## Architecture
+## 🎩 The Philosophy: "Cattle, not Pets" 🐮
 
-The solution is based on Docker and Docker Compose, utilizing a microservices architecture with network isolation:
+Forget about pet servers that need constant cuddling and manual maintenance.
+Our infrastructure follows the **Infrastructure as Code (IaC)** mantra. If something goes wrong, destroy and rebuild in seconds. The intelligence is in the code, not the machine!
 
-- **Nginx Proxy Manager:** Acts as the main gateway, managing all incoming traffic, routing, and the automation of SSL certificates (Let's Encrypt).
+---
 
-- **WordPress Stack:**
-  - **Webserver (Nginx):** Serves static files and proxies requests to the application.
-  - **Application (WordPress):** A custom image based on `wordpress:fpm`, built via a `Dockerfile` to include essential PHP extensions (`imagick`, `intl`).
-  - **Database (MariaDB):** A `mariadb:10` container with data persistence guaranteed by a named volume.
+## 🏰 Your Digital Fortress (Architecture)
 
-- **Docker Networks:**
-  - `proxy_network`: An external shared network for communication between the Proxy Manager and the application's Nginx container.
-  - `app-network`: An internal, isolated network for communication between Nginx, WordPress, and the Database.
+We build a castle of Docker containers to protect and accelerate your site:
 
-## Prerequisites
+*   **🛡️ The Guardian (Nginx Proxy Manager):** The main gate. Manages traffic, blocks villains, and summons SSL certificates (green padlocks) automatically.
+*   **⚙️ The Engine (WordPress + PHP-FPM):** A tuned version of WordPress, battle-ready (with `imagick`, `intl` extensions).
+*   **🗄️ The Vault (MariaDB):** Where your most precious data lives securely.
 
-- A server running Ubuntu 22.04 LTS (or newer).
-- `root` access or a user with `sudo` privileges.
-- A domain name pointed to your server's IP address.
+All connected by isolated networks, ensuring that what happens in the database, stays in the database.
 
-## 🚀 Quick Start Guide (Provisioning)
+---
 
-1.  **Clone this repository onto your server:**
+## 🛠️ What You Need (Prerequisites)
+
+*   🐧 A Linux server (Ubuntu/Debian preferred - even the "bare bones" ones, we handle the rest!).
+*   🔑 `root` access or `sudo` privileges.
+*   🌐 A domain name pointing to your server's IP.
+
+---
+
+## ⚡ Quick Start: From Zero to Hero
+
+1.  **Download the Spell (Clone the repo):**
     ```bash
     git clone https://github.com/muller-front/wp-server-in-a-box.git
     cd wp-server-in-a-box
     ```
 
-2.  **Create and configure your secrets file:**
+2.  **Configure the Secrets (Optional):**
+    If you're lazy (like us), just skip this! The script will ask for your passwords interactively if you don't create the file.
     ```bash
     cp .env.example .env
-    nano .env # Edit the file with your own secure passwords
+    nano .env # Optional: Manual configuration
     ```
 
-3.  **Run the provisioning script:**
+3.  **Cast the Magic:**
     ```bash
     chmod +x run.sh
-    ./run.sh # Use 'sudo ./run.sh' if your user is not in the docker group
+    ./run.sh
     ```
+    > **✨ Magic Update:**
+    > The script automatically installs **Docker** 🐳 using the official, secure script if it's missing. It also handles the `.env` generation for you.
 
-After the script finishes, follow the on-screen instructions to set up the Nginx Proxy Manager and complete the WordPress installation through your browser.
+4.  **The Grand Finale:**
+    The script will print a clear **"Manual Configuration Guide"** at the end. Follow it to configure your Proxy Host and SSL certificates in the Nginx Proxy Manager interface (Port 81).
 
-## ⚙️ Automation Scripts
+---
 
-- **`run.sh`:** The main bootstrap script. It installs Docker (if not present) and brings up all the stacks. This script also update containers images if WP-Server-in-a-Box is running.
+## 🤖 Your Robotic Assistants (Scripts)
 
-- **`destroy.sh`:** Stops, removes, and cleans up all containers and networks created by this project.
+*   **`run.sh`**: The Maestro. Installs dependencies, Docker, Nano, and brings up the entire container orchestra.
+*   **`destroy.sh`**: The Panic Button. Tears down and cleans up everything, in case you want to start from scratch.
+*   **`set-url.sh`**: The Mechanic. A utility tool to force-fix the site URL in `wp-config.php` if things go south.
 
-- **`set-url.sh`:** An emergency utility script to force the site's URL (HTTP/IP) in the `wp-config.php` file, useful for diagnostics.
+---
 
-## License
+## 📜 License
 
-This project is distributed under the MIT License. See the `LICENSE` file for more details.
+Distributed under the MIT License. Use, abuse, modify, and conquer the web!

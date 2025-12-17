@@ -10,9 +10,29 @@ echo "Project directory detected: $SCRIPT_DIR"
 # Check if the .env file exists
 ENV_FILE="$SCRIPT_DIR/.env"
 if [ ! -f "$ENV_FILE" ]; then
-    echo -e "\033[1;31mERROR: .env file not found!\033[0m"
-    echo "Please copy .env.example to .env and fill in your passwords."
-    exit 1
+    echo "--- Config file (.env) not found! ---"
+    echo "Starting interactive setup..."
+    
+    # Prompt for secrets
+    read -sp "Enter a secure password for the Database Root User: " DB_ROOT_PASS && echo ""
+    read -sp "Enter a secure password for the WordPress Database User: " DB_WP_PASS && echo ""
+    
+    # Generate .env file
+    echo "--- Generating .env file... ---"
+    cat > "$ENV_FILE" <<EOF
+# Database Passwords (Auto-generated)
+MYSQL_ROOT_PASSWORD=$DB_ROOT_PASS
+MYSQL_PASSWORD=$DB_WP_PASS
+
+# Other Configuration
+MYSQL_DATABASE=wordpress
+MYSQL_USER=wordpress
+NPM_DB_NAME=npm
+NPM_DB_USER=npm
+EOF
+    echo "✅ .env file created successfully."
+else
+    echo "--- Found existing .env file. using it. ---"
 fi
 
 # ==================================================================================
@@ -21,27 +41,26 @@ fi
 if ! command -v docker &> /dev/null
 then
     echo "--- Docker not found. Starting installation... ---"
-    echo "--- Step 1: Removing old Docker versions (if any) ---"
-    sudo apt-get remove docker docker-engine docker.io containerd runc -y || true
-
-    echo "--- Step 2: Updating system and installing dependencies ---"
-    sudo apt-get update && sudo apt-get upgrade -y
-    sudo apt-get install -y ca-certificates curl gnupg unzip
-
-    echo "--- Step 3: Adding Docker's official GPG key and repository ---"
-    sudo install -m 0755 -d /etc/apt/keyrings
-    curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo tee /etc/apt/keyrings/docker.gpg > /dev/null
-    sudo chmod a+r /etc/apt/keyrings/docker.gpg
-    echo \
-      "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
-      $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | \
-      sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+    
+    echo "--- Step 0: Installing basic tools (curl) ---"
     sudo apt-get update
+    sudo apt-get install -y curl
 
-    echo "--- Step 4: Installing Docker Engine and Compose V2 ---"
-    sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+    echo "--- Step 1: Installing Docker using official script ---"
+    curl -fsSL https://get.docker.com -o get-docker.sh
+    sudo sh get-docker.sh
+    rm get-docker.sh
+    
+    echo "--- Adding current user to docker group ---"
+    CURRENT_USER=${USER:-$(whoami)}
+    if [ -n "$CURRENT_USER" ]; then
+        sudo usermod -aG docker "$CURRENT_USER" || true
+        echo "NOTE: Group changes take effect on next login."
+    else
+        echo "WARNING: Could not determine current user. Skipping usermod."
+    fi
 else
-    echo "--- Docker is already installed. Skipping installation. ---"
+    echo "--- Docker is already installed. ---"
 fi
 
 echo "--- Verifying installations ---"
@@ -51,6 +70,34 @@ docker compose version
 # ==================================================================================
 # CONTAINER ORCHESTRATION SECTION
 # ==================================================================================
+
+# Function to check if Docker is running (with retries and sudo fallback)
+wait_for_docker() {
+    echo "--- Checking Docker Daemon status... ---"
+    local retries=30
+    local count=0
+    
+    # Explicitly try to start it just in case
+    sudo systemctl start docker || true
+
+    while [ $count -lt $retries ]; do
+        if sudo docker info &> /dev/null; then
+            echo "✅ Docker Daemon is running and accessible."
+            return 0
+        fi
+        echo "⏳ Waiting for Docker Daemon to start... ($((count+1))/$retries)"
+        sleep 1
+        count=$((count+1))
+    done
+    
+    return 1
+}
+
+if ! wait_for_docker; then
+    echo "❌ ERROR: Docker daemon failed to start or is not accessible."
+    echo "Please check 'sudo systemctl status docker' manually."
+    exit 1
+fi
 
 # List of stacks to be managed
 STACKS=("proxy" "wordpress-stack")
@@ -79,11 +126,15 @@ done
 echo -e "\n--- Pruning old Docker images ---"
 sudo docker image prune -f
 
+# ==================================================================================
+# FINAL OUTPUT
+# ==================================================================================
 echo ""
 echo "--- ✅ SUCCESS! ---"
 echo "The WordPress environment has been provisioned/updated."
-echo "If this is the first run, follow the manual steps below:"
-echo "1. Set up the Nginx Proxy Manager at YOUR_VM_IP:81"
+echo "Please follow these manual steps to finish setup:"
+echo ""
+echo "1. Set up the Nginx Proxy Manager at http://YOUR_VM_IP:81"
 echo "   (Default user: admin@example.com / password: changeme)"
 echo "2. Create a DNS A record (e.g., yourdomain.com) pointing to this VM's IP address."
 echo "3. In NPM, add a Proxy Host for 'yourdomain.com':"
@@ -92,3 +143,5 @@ echo "   - Also, enable the 'Block Common Exploits' option."
 echo "   - On the 'SSL' tab, request a new certificate and enable 'Force SSL' and 'HTTP/2 Support'."
 echo "4. Access 'https://yourdomain.com' and complete the famous 5-minute WordPress installation."
 echo "5. (Optional) To restore a backup, install your migration plugin (like WPVivid) and follow its instructions."
+
+echo ""
